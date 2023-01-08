@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useContext } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import axios from 'axios'
 import styled from '../../styles/rental-scss/rentalDetail.module.scss'
 import Commnent from './components/Commnent'
@@ -7,9 +7,15 @@ import dayjs from 'dayjs'
 import ProCartContext from '../../contexts/ProCartContext'
 import RentalLikeCard from './components/RentalLikeCard'
 import { Link } from 'react-router-dom'
+import ProductComment from '../product/components/ProductComment'
+import MemberContext from '../../contexts/MemberContext'
+import CommentLightBox from '../product/components/CommentLightBox'
+import Swal from 'sweetalert2'
 
 const Rental_detail = () => {
+  const navigate = useNavigate()
   const { addRenCart } = useContext(ProCartContext)
+  const memberData = useContext(MemberContext)
   //設定金額
   const { moneyFormat } = useContext(ProCartContext)
   const picRef = useRef()
@@ -19,7 +25,7 @@ const Rental_detail = () => {
   const [checkPic, setCheckPic] = useState(0)
   //裝商品資料
   const [Detail, setDetail] = useState()
-  console.log(Detail)
+  // console.log(Detail)
   //介紹或評論狀態
   const [productIntroduce, setProductIntroduce] = useState(true)
 
@@ -46,15 +52,13 @@ const Rental_detail = () => {
   const [cartStore, setCartStore] = useState({
     borrowStore: '大安店',
     backStore: '大安店',
-    borow_fee_level: 0,
+    borow_fee_level: 1,
     back_fee_level: 0,
   })
 
   //跨店運費狀態 要送去給購物車 ！！！！！！！！！！！！！！！！！！！！！！！
   const [deliveryFee, setDeliveryFee] = useState(0)
 
-  //評論資料
-  // const [commnentData, setDommnentData] = useState([])
   //下面是利用useEffect去要資料
   const rental_url = `http://localhost:3001/rental/getDetailData/${sid}`
   //要商品資料
@@ -74,7 +78,12 @@ const Rental_detail = () => {
 
   const [like, setLike] = useState({})
 
+  // 評論資料
   const [comment, setComment] = useState('')
+  const [avgStar, setAvgStar] = useState(0)
+  const [whichCom, setWhichCom] = useState(0)
+  const [comLightBox, setComLightBox] = useState(false)
+
   const like_url = `http://localhost:3001/rental/getLike`
   async function get_Like() {
     const response = await axios.get(like_url)
@@ -85,9 +94,12 @@ const Rental_detail = () => {
   const comment_url = `http://localhost:3001/rental/comment?sid=${sid}`
   async function get_Comment() {
     const response = await axios.get(comment_url)
-    console.log(response.data.rows)
+    // console.log(response.data.rows)
+    const r2 = response.data.rows2[0].avgStar
     setComment(response.data.rows)
+    setAvgStar(r2)
   }
+
   useEffect(() => {
     get_rental_detail()
     get_store()
@@ -97,6 +109,13 @@ const Rental_detail = () => {
 
   return (
     <>
+      {comLightBox && (
+        <CommentLightBox
+          commentFetch={comment}
+          whichCom={whichCom}
+          setComLightBox={setComLightBox}
+        />
+      )}
       {Detail && (
         <>
           <div className={styled.empty}></div>
@@ -120,9 +139,7 @@ const Rental_detail = () => {
                             key={i}
                             style={{
                               border: `${
-                                checkPic === i
-                                  ? '2px solid rgb(255,255,255)'
-                                  : 'none'
+                                checkPic === i ? '2px solid #ccc' : 'none'
                               }`,
                             }}
                           >
@@ -170,18 +187,54 @@ const Rental_detail = () => {
                       value={day.borrowDay}
                       onChange={(e) => {
                         const changeDay = Date.parse(e.currentTarget.value)
-                        setDay({
-                          ...day,
-                          borrowDay: dayjs(changeDay).format(dateFormat),
-                        })
+                        const changeDayTomorrow = changeDay + 86400000
+                        if (
+                          changeDay > Date.parse(day.backDay) ||
+                          changeDay === Date.parse(day.backDay)
+                        ) {
+                          console.log('changeDay!!!!', changeDay)
+                          console.log('backDay!!!!', Date.parse(day.backDay))
+                          setDay({
+                            ...day,
+                            borrowDay: dayjs(changeDay).format(dateFormat),
+                            backDay:
+                              dayjs(changeDayTomorrow).format(dateFormat),
+                          })
+                          setBorrowMoney(
+                            (Detail.rental_price *
+                              number *
+                              (changeDayTomorrow - changeDay)) /
+                              86400000
+                          )
+                        } else {
+                          setDay({
+                            ...day,
+                            borrowDay: dayjs(changeDay).format(dateFormat),
+                          })
 
-                        setBorrowMoney(
-                          (Detail.rental_price *
-                            number *
-                            (Date.parse(day.backDay) - changeDay)) /
-                            86400000
-                        )
+                          setBorrowMoney(
+                            (Detail.rental_price *
+                              number *
+                              (Date.parse(day.backDay) - changeDay)) /
+                              86400000
+                          )
+                        }
                       }}
+
+                      // onChange={(e) => {
+                      //   const changeDay = Date.parse(e.currentTarget.value)
+                      //   setDay({
+                      //     ...day,
+                      //     borrowDay: dayjs(changeDay).format(dateFormat),
+                      //   })
+
+                      //   setBorrowMoney(
+                      //     (Detail.rental_price *
+                      //       number *
+                      //       (Date.parse(day.backDay) - changeDay)) /
+                      //       86400000
+                      //   )
+                      // }}
                     />
                   </div>
                   {/* 歸還日設定 */}
@@ -194,28 +247,57 @@ const Rental_detail = () => {
                       value={day.backDay}
                       onChange={(e) => {
                         const changeDay = Date.parse(e.currentTarget.value)
-                        setDay({
-                          ...day,
-                          backDay: dayjs(changeDay).format(dateFormat),
-                        })
+                        const changeDayYesterDay = changeDay - 86400000
+                        if (
+                          changeDay < Date.parse(day.borrowDay) ||
+                          changeDay === Date.parse(day.borrowDay)
+                        ) {
+                          return
+                        } else {
+                          setDay({
+                            ...day,
+                            backDay: dayjs(changeDay).format(dateFormat),
+                          })
 
-                        setBorrowMoney(
-                          (Detail.rental_price *
-                            number *
-                            (changeDay - Date.parse(day.borrowDay))) /
-                            86400000
-                        )
+                          setBorrowMoney(
+                            (Detail.rental_price *
+                              number *
+                              (changeDay - Date.parse(day.borrowDay))) /
+                              86400000
+                          )
+                        }
                       }}
+
+                      // onChange={(e) => {
+                      //   const changeDay = Date.parse(e.currentTarget.value)
+                      //   setDay({
+                      //     ...day,
+                      //     backDay: dayjs(changeDay).format(dateFormat),
+                      //   })
+
+                      //   setBorrowMoney(
+                      //     (Detail.rental_price *
+                      //       number *
+                      //       (changeDay - Date.parse(day.borrowDay))) /
+                      //       86400000
+                      //   )
+                      // }}
                     />
                   </div>
                 </div>
                 {/* 取件跟歸還店點設定 */}
                 <div className={styled.flex}>
                   <div>
-                    <span>取件店點：</span>
+                    <span
+                      className={styled.toStore}
+                      onClick={() => navigate('/Store')}
+                    >
+                      取件店點：
+                    </span>
                     <select
                       onChange={(e) => {
                         const store_value = e.target.value.split(',')
+                        console.log(store_value)
                         const new_store = {
                           ...cartStore,
                           borrowStore: store_value[0],
@@ -243,10 +325,16 @@ const Rental_detail = () => {
                     </select>
                   </div>
                   <div>
-                    <span>歸還店點：</span>
+                    <span
+                      className={styled.toStore}
+                      onClick={() => navigate('/Store')}
+                    >
+                      歸還店點：
+                    </span>
                     <select
                       onChange={(e) => {
                         const store_value = e.target.value.split(',')
+                        console.log(store_value)
                         const new_store = {
                           ...cartStore,
                           backStore: store_value[0],
@@ -276,7 +364,7 @@ const Rental_detail = () => {
                 </div>
                 <div className={styled.flex}>
                   <div>租借費用：{moneyFormat(borrowMoney)}</div>
-                  <div>跨店費用：{moneyFormat(deliveryFee)}</div>
+                  <div>跨區費用：{moneyFormat(deliveryFee)}</div>
                 </div>
                 {/* 商品數量跟金額 設定 */}
                 <div className={styled.flex}>
@@ -296,7 +384,7 @@ const Rental_detail = () => {
                         )
                       }}
                     >
-                      -
+                      －
                     </button>
                     <button className={styled.middlebutton}>{number}</button>
                     <button
@@ -321,6 +409,12 @@ const Rental_detail = () => {
                 <button
                   className={styled.addcart}
                   onClick={() => {
+                    Swal.fire({
+                      icon: 'success',
+                      title: '已加入!',
+                      timer: 1200,
+                      showConfirmButton: false,
+                    })
                     const test = [
                       Detail.sid,
                       Detail.rental_name,
@@ -373,32 +467,43 @@ const Rental_detail = () => {
               </div>
             )}
 
-            {!productIntroduce && (
-              <div className={styled.sectionCommnent}>
-                <div className={styled.star}>
-                  <i className="fa-solid fa-star"></i>
-                  <i className="fa-solid fa-star"></i>
-                  <i className="fa-solid fa-star"></i>
-                  <i className="fa-solid fa-star"></i>
-                  <i className="fa-solid fa-star"></i>
-                </div>
-                <div className={styled.commnentCardBox}>
-                  {testData.map((v, i) => {
-                    return <Commnent key={i} />
-                  })}
+            {
+              !productIntroduce && (
+                <ProductComment
+                  avgStar={avgStar}
+                  commentFetch={comment}
+                  memberData={memberData}
+                  setWhichCom={setWhichCom}
+                  setComLightBox={setComLightBox}
+                />
+              )
+              // <div className={styled.sectionCommnent}>
+              //   <div className={styled.star}>
+              //     <i className="fa-solid fa-star"></i>
+              //     <i className="fa-solid fa-star"></i>
+              //     <i className="fa-solid fa-star"></i>
+              //     <i className="fa-solid fa-star"></i>
+              //     <i className="fa-solid fa-star"></i>
+              //   </div>
+              //   <div className={styled.commnentCardBox}>
+              //     {testData.map((v, i) => {
+              //       return <Commnent key={i} />
+              //     })}
+              //   </div>
+              // </div>
+            }
+
+            {productIntroduce && (
+              <div className={styled.section4}>
+                <h3>猜你喜歡</h3>
+                <div className={styled.cardbox}>
+                  {like.length > 0 &&
+                    like.map((e, i) => {
+                      return <RentalLikeCard data={e} key={i} />
+                    })}
                 </div>
               </div>
             )}
-
-            <div className={styled.section4}>
-              <h3>猜你喜歡</h3>
-              <div className={styled.cardbox}>
-                {like.length > 0 &&
-                  like.map((e, i) => {
-                    return <RentalLikeCard data={e} key={i} />
-                  })}
-              </div>
-            </div>
           </div>
         </>
       )}

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { ProCartContextProvider } from './contexts/ProCartContext'
 import { MemberContextProvider } from './contexts/MemberContext'
+import Tappay from './pages/Cart/child-pages/Tappay'
 import ScrollToTop from './components/ScrollToTop'
 import Layout from './Outlet/outlet'
 import Navbar from './components/Navbar'
@@ -16,6 +17,7 @@ import Room from './pages/room/Room'
 import Rental from './pages/rental/Rental'
 import Rental_detail from './pages/rental/Rental_detail'
 import AI from './pages/rental/AI'
+import Socket from './pages/rental/Socket'
 import Store from './pages/rental/Store'
 import Commnent from './pages/rental/components/Commnent'
 import SunClouds from './components/sunCloud'
@@ -61,10 +63,15 @@ function App() {
               <Route path="/room/:room_sid" element={<RoomDetailPage />} />
               <Route path="/rental" element={<Rental />} />
               <Route path="/rental/:sid" element={<Rental_detail />} />
+              {/* 這兩隻都是測試 */}
               <Route path="/AI" element={<AI />} />
+              <Route path="/Socket" element={<Socket />} />
+              {/* <Route path="/Socket" element={<Socket socket={socket} />} /> */}
+              {/* 上面兩隻都是測試  */}
               <Route path="/store" element={<Store />} />
               <Route path="/commnent" element={<Commnent />} />
               <Route path="/cart" element={<Cart />} />
+              <Route path="/testpay" element={<Tappay />} />
               <Route path="/pay/confirm" element={<Confirm />} />
               <Route path="/social" element={<SocialWall />} />
               <Route path="/leaderboard" element={<Leaderboard />} />

@@ -20,10 +20,27 @@ export default function CustomLightBox({
     setCanvasModal(canvasModal)
   }, [])
 
+  useEffect(() => {
+    if (setShow) {
+      document.body.style.overflow = 'hidden'
+    }
+  }, [setShow])
+
   return (
     <>
-      <div className={styled.customLightBox}>
-        <div className={styled.customLightBoxBg}>
+      <div
+        className={styled.customLightBox}
+        onClick={() => {
+          setShow(false)
+          document.body.style.overflow = 'visible'
+        }}
+      >
+        <div
+          className={styled.customLightBoxBg}
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
+        >
           <div className={styled.topArea}>
             <div className={styled.title}>新增照片</div>
             <div className={styled.escape}>
@@ -32,6 +49,7 @@ export default function CustomLightBox({
                 alt="escape"
                 onClick={() => {
                   setShow(false)
+                  document.body.style.overflow = 'visible'
                 }}
               />
             </div>
@@ -59,6 +77,7 @@ export default function CustomLightBox({
               onClick={() => {
                 addPhoto()
                 setShow(false)
+                document.body.style.overflow = 'visible'
               }}
             >
               確定
